@@ -1,21 +1,67 @@
 import pandas as pd
-from sqlalchemy.orm import Session
+from app.models.base import Sales
+from fastapi import HTTPException, status
 
-def process_sales_data(file_path: str, db: Session):
-    # Read the CSV file
-    df = pd.read_csv(file_path)
+async def process_sales_data(file, db):
 
-    # Validate required columns
-    required_columns = ['Date', 'Product', 'Quantity', 'Price']
-    if not all(col in df.columns for col in required_columns):
-        raise ValueError(f"CSV must contain the following columns: {', '.join(required_columns)}")
+    df = pd.read_csv(file)
 
-    # Process and store data in the database
-    for _, row in df.iterrows():
-        # Here you would create your database model instance and add it to the session
-        # For example:
-        # sale = Sale(date=row['Date'], product=row['Product'], quantity=row['Quantity'], price=row['Price'])
-        # db.add(sale)
-        pass  # Replace with actual database logic
+    # 1️⃣ Clean column names
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(r"\s+", "_", regex=True)
+    )
 
-    db.commit()
+    # 2️⃣ Required columns (quantity removed)
+    required_columns = [
+        'date',
+        'product_name',
+        'selling_price',
+        'category'
+    ]
+
+    missing_cols = [col for col in required_columns if col not in df.columns]
+
+    if missing_cols:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"CSV is missing required columns: {', '.join(missing_cols)}"
+        )
+
+    # 3️⃣ Handle optional quantity
+    if 'quantity' not in df.columns:
+        df['quantity'] = 1
+
+    df['quantity'] = pd.to_numeric(df['quantity'], errors='coerce').fillna(1).astype(int)
+
+    # 4️⃣ Remove extra columns
+    allowed_columns = required_columns + ['quantity']
+    df = df[allowed_columns]
+    print("all columns after processing:", df.columns.tolist())
+    df['date'] = df['date'].astype(str).str.strip()
+
+    try:
+        df['date'] = pd.to_datetime(df['date'],format="%d-%m-%Y").dt.date
+    except Exception:
+        raise HTTPException(
+            status_code=400,
+            detail="Date format should be DD-MM-YYYY")
+
+    # 6️⃣ Insert into DB
+    sales_objects = [
+        Sales(
+            product_name=row['product_name'],
+            quantity=row['quantity'],
+            selling_price=row['selling_price'],
+            category=row['category'],
+            date=row['date']
+        )
+        for _, row in df.iterrows()
+    ]
+
+    db.add_all(sales_objects)
+    await db.commit()
+
+    return {"message": "Upload successful"}

@@ -1,21 +1,17 @@
-from fastapi import APIRouter, UploadFile, File,HTTPException
-import pandas as pd
+from fastapi import APIRouter, UploadFile, File,HTTPException, Depends
 from app.services.data_processor import process_sales_data
+from sqlalchemy.orm import Session
+from app.db.session import get_db
 
 router = APIRouter()
 
 @router.post("/")
-async def upload_file(file: UploadFile = File(...)):
-    # Process the uploaded file here
+async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
+    """Endpoint to upload a CSV file containing sales data."""
+    print(f"Received file: {file.filename}")
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
-    
-    process_sales_data(file.file, )  # Replace None with your actual database session
-    df = pd.read_csv(file.file)
-    req_cols = ['Date', 'Product', 'Quantity', 'Price']
-    if not all(col in df.columns for col in req_cols):
-        raise HTTPException(status_code=400, detail=f"CSV must contain the following columns: {', '.join(req_cols)}")
-    
+    return await process_sales_data(file.file, db)
     
 @router.get("/")
 async def read_root():
