@@ -65,3 +65,4 @@ async def process_sales_data(file, db):
     await db.commit()
 
     return {"message": "Upload successful"}
+# This is data processor
