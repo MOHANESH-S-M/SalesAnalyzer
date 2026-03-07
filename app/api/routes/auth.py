@@ -4,7 +4,7 @@ from sqlalchemy import select, or_
 from app.db.session import get_db
 from app.models.base import User
 from app.schemas.user_schema import UserCreate, UserLogin, UserResponse
-from app.core.security import get_password_hash, verify_password
+from app.core.security import get_password_hash, verify_password, create_access_token
 
 router = APIRouter()
 
@@ -57,5 +57,9 @@ async def login(login_data: UserLogin, db: AsyncSession = Depends(get_db)):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials"
         )
-    
-    return {"message": "Login successful", "user": {"id": user.id, "name": user.name}}
+
+    access_token = create_access_token(data={"sub": str(user.id)})
+    return {"access_token": access_token,
+             "token_type": "bearer",
+            "user": {"id": user.id, "name": user.name}}
+

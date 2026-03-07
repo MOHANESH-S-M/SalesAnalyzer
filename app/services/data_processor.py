@@ -2,7 +2,7 @@ import pandas as pd
 from app.models.base import Sales
 from fastapi import HTTPException, status
 
-async def process_sales_data(file, db):
+async def process_sales_data(file, db, user_id:int):
 
     df = pd.read_csv(file)
 
@@ -56,12 +56,12 @@ async def process_sales_data(file, db):
             quantity=row['quantity'],
             selling_price=row['selling_price'],
             category=row['category'],
-            date=row['date']
+            date=row['date'],
+            user_id= user_id
         )
         for _, row in df.iterrows()
     ]
 
     db.add_all(sales_objects)
     await db.commit()
-
     return {"message": "Upload successful"}
