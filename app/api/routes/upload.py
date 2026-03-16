@@ -15,7 +15,7 @@ async def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
     
     return await process_sales_data(file.file, db, current_user.id)
-    
+
 @router.get("/")
 async def read_root():
     return {"message": "Upload endpoint is working!"}
