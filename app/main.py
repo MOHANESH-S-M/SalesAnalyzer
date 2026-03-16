@@ -22,6 +22,7 @@ async def check_db_insertion():
             selling_price=100,
             category="test",
             date=date(2024, 6, 1),
+            user_id=1
         )
         session.add(sale)
         await session.commit()
